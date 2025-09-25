@@ -7,22 +7,22 @@ import argparse
 
 app = Flask(__name__)
 
-DBHOST = os.environ.get("DBHOST") or "localhost"
-DBUSER = os.environ.get("DBUSER") or "root"
-DBPWD = os.environ.get("DBPWD") or "passwors"
-DATABASE = os.environ.get("DATABASE") or "employees"
-COLOR_FROM_ENV = os.environ.get('APP_COLOR') or "lime"
-DBPORT = int(os.environ.get("DBPORT"))
+DBHOST = os.environ.get("MYSQL_HOST", "localhost") 
+DBUSER = os.environ.get("MYSQL_USER", "root")     
+DBPASSWORD = os.environ.get("MYSQL_PASSWORD", "password") 
+DATABASE = os.environ.get("MYSQL_DB", "employees") 
+APP_BG_COLOR = os.environ.get('BG_COLOR') or "lime" 
+DBPORT = int(os.environ.get("DBPORT", "3306")) # Added "3306" as default
 
 # Create a connection to the MySQL database
 db_conn = connections.Connection(
     host= DBHOST,
     port=DBPORT,
     user= DBUSER,
-    password= DBPWD, 
-    db= DATABASE
-    
+    password= DBPASSWORD, 
+    database= DATABASE    
 )
+
 output = {}
 table = 'employee';
 
@@ -37,11 +37,10 @@ color_codes = {
     "lime": "#C1FF9C",
 }
 
-
 # Create a string of supported colors
 SUPPORTED_COLORS = ",".join(color_codes.keys())
 
-# Generate a random color
+# Generate a random color (this will be overridden by env var or CLI arg)
 COLOR = random.choice(["red", "green", "blue", "blue2", "darkblue", "pink", "lime"])
 
 
@@ -52,7 +51,7 @@ def home():
 @app.route("/about", methods=['GET','POST'])
 def about():
     return render_template('about.html', color=color_codes[COLOR])
-    
+
 @app.route("/addemp", methods=['POST'])
 def AddEmp():
     emp_id = request.form['emp_id']
@@ -61,12 +60,12 @@ def AddEmp():
     primary_skill = request.form['primary_skill']
     location = request.form['location']
 
-  
+
     insert_sql = "INSERT INTO employee VALUES (%s, %s, %s, %s, %s)"
     cursor = db_conn.cursor()
 
     try:
-        
+
         cursor.execute(insert_sql,(emp_id, first_name, last_name, primary_skill, location))
         db_conn.commit()
         emp_name = "" + first_name + " " + last_name
@@ -93,14 +92,14 @@ def FetchData():
     try:
         cursor.execute(select_sql,(emp_id))
         result = cursor.fetchone()
-        
+
         # Add No Employee found form
         output["emp_id"] = result[0]
         output["first_name"] = result[1]
         output["last_name"] = result[2]
         output["primary_skills"] = result[3]
         output["location"] = result[4]
-        
+
     except Exception as e:
         print(e)
 
@@ -111,20 +110,21 @@ def FetchData():
                            lname=output["last_name"], interest=output["primary_skills"], location=output["location"], color=color_codes[COLOR])
 
 if __name__ == '__main__':
-    
+
     # Check for Command Line Parameters for color
     parser = argparse.ArgumentParser()
     parser.add_argument('--color', required=False)
     args = parser.parse_args()
 
+    # --- UPDATED COLOR LOGIC ---
     if args.color:
         print("Color from command line argument =" + args.color)
         COLOR = args.color
-        if COLOR_FROM_ENV:
-            print("A color was set through environment variable -" + COLOR_FROM_ENV + ". However, color from command line argument takes precendence.")
-    elif COLOR_FROM_ENV:
-        print("No Command line argument. Color from environment variable =" + COLOR_FROM_ENV)
-        COLOR = COLOR_FROM_ENV
+        if APP_BG_COLOR:
+            print("A color was set through environment variable -" + APP_BG_COLOR + ". However, color from command line argument takes precendence.")
+    elif APP_BG_COLOR:
+        print("No Command line argument. Color from environment variable =" + APP_BG_COLOR)
+        COLOR = APP_BG_COLOR
     else:
         print("No command line argument or environment variable. Picking a Random Color =" + COLOR)
 

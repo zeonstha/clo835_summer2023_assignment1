@@ -1,0 +1,6 @@
+# Use the official MySQL image from Docker Hub
+FROM mysql:8.0
+
+# Copies initialization script to the MySQL entrypoint directory.
+# MySQL's official Docker image automatically runs .sql files placed here.
+COPY ./mysql.sql /docker-entrypoint-initdb.d/
