@@ -1,0 +1,48 @@
+name: Build and Push Docker Images to ECR
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_WEBAPP_REPO: ${{ secrets.ECR_WEBAPP_REPO }}
+  ECR_MYSQL_REPO: ${{ secrets.ECR_MYSQL_REPO }}
+  IMAGE_TAG: latest
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build and Push Webapp Docker Image
+      run: |
+        docker build -t $ECR_WEBAPP_REPO:$IMAGE_TAG -f Dockerfile.webapp .
+        docker push $ECR_WEBAPP_REPO:$IMAGE_TAG
+
+    - name: Build and Push MySQL Docker Image
+      run: |
+        docker build -t $ECR_MYSQL_REPO:$IMAGE_TAG -f Dockerfile.mysql .
+        docker push $ECR_MYSQL_REPO:$IMAGE_TAG
